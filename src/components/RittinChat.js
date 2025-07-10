@@ -27,14 +27,6 @@ const initializeFirebase = () => {
   }
 };
 
-const MessageSkeleton = () => (
-  <div className="flex flex-col gap-2 animate-pulse">
-    <div className="h-10 bg-gray-200 rounded-lg w-3/4"></div>
-    <div className="h-6 bg-gray-200 rounded-lg w-1/2"></div>
-    <div className="h-4 bg-gray-200 rounded-lg w-1/4"></div>
-  </div>
-);
-
 const RittinChat = () => {
   // State variables
   const [messages, setMessages] = useState([]);
@@ -133,11 +125,7 @@ const RittinChat = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  // Enhanced message animation styles
-  const messageAnimationClass = "animate-message-appear transition-all duration-300 ease-out";
-  const tipAnimationClass = "animate-tip-appear transition-all duration-500 ease-out";
-
-  // Message handling functions with loading state
+  // Message handling functions
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
 
@@ -151,11 +139,11 @@ const RittinChat = () => {
 
     setInputText('');
     setIsLoading(true);
-    setMessages(prev => [...prev, newMessage, { id: 'loading', type: 'loading' }]);
 
     try {
       if (chatMode === 'maria') {
         console.log('Starting María bot response flow');
+        setMessages(prev => [...prev, newMessage]);
 
         try {
           const userTranslation = await generateTranslationAndTip(
@@ -166,7 +154,7 @@ const RittinChat = () => {
             true
           );
 
-          setMessages(prev => prev.filter(msg => msg.id !== 'loading').map(msg => 
+          setMessages(prev => prev.map(msg => 
             msg.id === newMessage.id 
               ? { ...msg, ...userTranslation }
               : msg
@@ -191,7 +179,7 @@ const RittinChat = () => {
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
 
-          setMessages(prev => [...prev.filter(msg => msg.id !== 'loading'), mariaMessage]);
+          setMessages(prev => [...prev, mariaMessage]);
 
         } catch (error) {
           console.error('Error in María bot flow:', error);
@@ -205,7 +193,7 @@ const RittinChat = () => {
             tip: "Sometimes technology fails us - that's when we practice patience!",
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
-          setMessages(prev => [...prev.filter(msg => msg.id !== 'loading'), errorMessage]);
+          setMessages(prev => [...prev, errorMessage]);
         }
 
       } else if (chatMode === 'maya') {
@@ -347,9 +335,9 @@ const RittinChat = () => {
       setMessages(prev => prev.map(msg => 
         msg.id === newMessage.id ? errorMessage : msg
       ));
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   const handleKeyPress = (e) => {
@@ -864,65 +852,57 @@ const RittinChat = () => {
         {/* Messages Container */}
         <div className="flex-1 bg-white shadow rounded-lg p-4 mb-4 overflow-y-auto">
           <div className="space-y-4">
-            {messages.map((message, index) => (
-              message.type === 'loading' ? (
-                <div key="loading" className="flex justify-start">
-                  <div className="max-w-[80%]">
-                    <MessageSkeleton />
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === userName ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[70%] ${message.sender === userName ? 'bg-blue-500 text-white' : 'bg-gray-100'} rounded-lg p-3`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">{message.sender}</span>
+                    <span className="text-xs opacity-75">{message.timestamp}</span>
                   </div>
-                </div>
-              ) : (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === userName ? 'justify-end' : 'justify-start'} ${messageAnimationClass}`}
-                >
-                  <div className={`max-w-[70%] ${message.sender === userName ? 'bg-blue-500 text-white' : 'bg-gray-100'} rounded-lg p-3`}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{message.sender}</span>
-                      <span className="text-xs opacity-75">{message.timestamp}</span>
-                    </div>
-                    <p className="mb-1">{message.original}</p>
-                    {message.translation && (
-                      <p className="text-sm opacity-75">{message.translation}</p>
-                    )}
-                    {showPhonetics && message.phonetic && (
-                      <p className="text-xs italic mt-1 opacity-75">{message.phonetic}</p>
-                    )}
-                    {message.tip && (
-                      <div className={`mt-2 text-sm bg-yellow-100 bg-opacity-20 p-2 rounded ${tipAnimationClass}`}>
-                        <div className="flex items-start justify-between">
-                          <p className="flex-1">{message.tip}</p>
-                          <button
-                            onClick={() => regenerateTip(message)}
-                            className="ml-2 text-xs opacity-75 hover:opacity-100"
-                            disabled={tipLoadingMessages.has(message.id)}
-                          >
-                            {tipLoadingMessages.has(message.id) ? '...' : '↻'}
-                          </button>
-                        </div>
+                  <p className="mb-1">{message.original}</p>
+                  {message.translation && (
+                    <p className="text-sm opacity-75">{message.translation}</p>
+                  )}
+                  {showPhonetics && message.phonetic && (
+                    <p className="text-xs italic mt-1 opacity-75">{message.phonetic}</p>
+                  )}
+                  {message.tip && (
+                    <div className="mt-2 text-sm bg-yellow-100 bg-opacity-20 p-2 rounded">
+                      <div className="flex items-start justify-between">
+                        <p className="flex-1">{message.tip}</p>
+                        <button
+                          onClick={() => regenerateTip(message)}
+                          className="ml-2 text-xs opacity-75 hover:opacity-100"
+                          disabled={tipLoadingMessages.has(message.id)}
+                        >
+                          {tipLoadingMessages.has(message.id) ? '...' : '↻'}
+                        </button>
                       </div>
-                    )}
-                    <div className="flex items-center justify-end mt-2 space-x-2">
-                      <button
-                        onClick={() => copyMessageToClipboard(message)}
-                        className="text-xs opacity-75 hover:opacity-100"
-                      >
-                        {copiedMessageId === message.id ? (
-                          <Check className="w-4 h-4" />
-                        ) : (
-                          <Clipboard className="w-4 h-4" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => openFeedbackModal(message)}
-                        className="text-xs opacity-75 hover:opacity-100"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                      </button>
                     </div>
+                  )}
+                  <div className="flex items-center justify-end mt-2 space-x-2">
+                    <button
+                      onClick={() => copyMessageToClipboard(message)}
+                      className="text-xs opacity-75 hover:opacity-100"
+                    >
+                      {copiedMessageId === message.id ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Clipboard className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => openFeedbackModal(message)}
+                      className="text-xs opacity-75 hover:opacity-100"
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              )
+              </div>
             ))}
             <div ref={messagesEndRef} />
           </div>
